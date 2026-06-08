@@ -3,3 +3,4 @@ class Tile:
         self.isFlagged = False
         self.isRevealed = False
         self.isMine = False
+        self.adjacentMines = 0
