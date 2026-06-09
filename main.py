@@ -78,8 +78,17 @@ def updateBoardPositions():
 
     return offsetX, offsetY, boardHeight, boardWidth
 
+
+
 def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gameOver):
 
+
+    pygame.draw.rect(
+            screen,
+            (255, 0, 0),
+            (offsetX - 5, offsetY - 5, boardHeight + 10, boardWidth + 10),
+            2
+            )
     
     
     for row in range(rowsOfTiles):
@@ -87,22 +96,25 @@ def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gam
             
             tile = grid[row][col]
             border = 0
-
+            text = None
+            textRect = None
             
             
             x = offsetX + tileSize * col
             y = offsetY + tileSize * row
 
+            
 
             if tile.isMine and gameOver:
                 color = (0, 0, 0)
 
             else:
-                if tile.isFlagged and not tile.isRevealed:
+                if tile.isFlagged and not tile.isRevealed and not gameOver:
                     color = (200, 0, 0)
                     border = 1
 
-                elif tile.isRevealed and not tile.isMine and not tile.isFlagged:
+
+                elif tile.isRevealed and not tile.isMine and not tile.isFlagged and not gameOver:
                     color = (255, 255, 50)
                     border = 0
 
@@ -134,7 +146,9 @@ def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gam
                             center = (x + tileSize // 2, y + tileSize // 2)
                         )
 
-                        screen.blit(text, textRect)
+                elif tile.isRevealed and tile.adjacentMines == 0:
+                    color = (255, 255, 150)
+                    border = 0
 
                 else:
                     color = (200, 200, 200)
@@ -153,18 +167,61 @@ def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gam
                 2
             )
 
-            pygame.draw.rect(
-            screen,
-            (255, 0, 0),
-            (offsetX - 5, offsetY - 5, boardHeight + 10, boardWidth + 10),
-            2
-            )
+            if text is not None:
+                screen.blit(text, textRect)
+
+def revealFreeTiles(grid: list, row, col):
+
+    tile = grid[row][col]
+
+    if tile.isRevealed:
+        return
+    
+    if tile.isMine:
+        return
+    
+    tile.isRevealed = True
+
+    if tile.adjacentMines > 0:
+        return
+    
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+
+            if i == 0 and j == 0:
+                continue
+
+            newRow = row + i
+            newCol = col + j
+
+            if not (0 <= newRow < rowsOfTiles):
+                continue
+
+            if not (0 <= newCol < colsOfTiles):
+                continue
+
+            revealFreeTiles(grid, newRow, newCol)
+
+
+def placeMines(grid, count):
+    
+    while count > 0:
+        
+        rowI = random.randint(0, rowsOfTiles - 1)
+        colJ = random.randint(0, colsOfTiles - 1)
+
+        if grid[rowI][colJ].isMine:
+            continue
+        else:
+            grid[rowI][colJ].isMine = True
+            count -= 1
+
 
 createGrid(grid)
 calculateNums(grid)
 
 gameOver = False
-
+firstClick = True
 running = True
 
 while running:
@@ -180,11 +237,49 @@ while running:
 
                 clickedTile = grid[tileY][tileX]
 
+
+
                 if event.button == 1:
-                    clickedTile.isRevealed = True
+                    
+                    if firstClick:
+                        firstClick = False
+
+                        if clickedTile.isMine:
+                            clickedTile.isMine = False
+                            calculateNums(grid)
+
+                        if clickedTile.adjacentMines > 0:
+                            
+                            mineCount = 0
+
+                            for i in range(-1, 2):
+                                for j in range(-1, 2):
+                                    if i == 0 and j == 0:
+                                        continue
+
+                                    newRow = i + tileY
+                                    newCol = j + tileX
+
+                                    if not (0 <= newRow < rowsOfTiles):
+                                        continue
+
+                                    if not (0 <= newCol < colsOfTiles):
+                                        continue
+
+                                    if grid[newRow][newCol].isMine:
+                                        grid[newRow][newCol].isMine = False
+                                        
+                                        mineCount += 1
+
+                            placeMines(grid, mineCount)
+                            calculateNums(grid)
 
                     if clickedTile.isMine:
+                        clickedTile.isRevealed = True
                         gameOver = True
+
+                    else:
+                        revealFreeTiles(grid, tileY, tileX)
 
                 elif event.button == 3:
                     if not clickedTile.isRevealed:
