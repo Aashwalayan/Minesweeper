@@ -124,11 +124,11 @@ def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gam
                         
                         match mineNum:
                             case 1:
-                                mineNumColor = (0, 0, 255)      # blue
+                                mineNumColor = (0, 0, 255)
                             case 2:
-                                mineNumColor = (0, 128, 0)      # green
+                                mineNumColor = (0, 128, 0)
                             case 3:
-                                mineNumColor = (255, 0, 0)      # red
+                                mineNumColor = (255, 0, 0)
                             case 4:
                                 mineNumColor = (0, 0, 128)
                             case 5:
@@ -216,18 +216,41 @@ def placeMines(grid, count):
             grid[rowI][colJ].isMine = True
             count -= 1
 
+def checkWin(grid):
+    for row in range(rowsOfTiles):
+        for col in range(colsOfTiles):
+
+            tile = grid[row][col]
+
+            if not tile.isRevealed and not tile.isMine:
+                return False
+            
+    return True
+
+def resetGame():
+    global grid, gameOver, gameWon, firstClick
+
+    grid = [[Tile() for _ in range(colsOfTiles)] for _ in range(rowsOfTiles)]
+
+    createGrid(grid)
+    calculateNums(grid)
+
+    gameOver = False
+    gameWon = False
+    firstClick = True
 
 createGrid(grid)
 calculateNums(grid)
 
 gameOver = False
+gameWon = False
 firstClick = True
 running = True
 
 while running:
     for event in pygame.event.get():
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and not gameOver and not gameWon:
             mouseX, mouseY = pygame.mouse.get_pos()
             
             if (offsetX <= mouseX < offsetX + boardWidth and offsetY <= mouseY < offsetY + boardHeight):
@@ -281,6 +304,9 @@ while running:
                     else:
                         revealFreeTiles(grid, tileY, tileX)
 
+                        if checkWin(grid):
+                            gameWon = True
+
                 elif event.button == 3:
                     if not clickedTile.isRevealed:
                         clickedTile.isFlagged = not clickedTile.isFlagged
@@ -289,7 +315,11 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_F11:
+
+            if event.key == pygame.K_r:
+                resetGame()
+
+            elif event.key == pygame.K_F11:
                 fullscreen = not fullscreen
 
                 if fullscreen:
@@ -305,6 +335,38 @@ while running:
     screen.fill((30, 30, 30))
     offsetX, offsetY, boardHeight, boardWidth = updateBoardPositions()
     drawBoard(screen, grid, offsetX, offsetY, boardWidth, boardHeight, gameOver)
+
+    if gameWon:
+        text = font.render(
+            "You Won! (Press R to restart)",
+            True,
+            (255, 0, 0)
+
+        )
+
+        textRect = text.get_rect(
+            center = (
+                screen.get_width() // 2,
+                offsetY + boardHeight + 30
+            )
+        )
+
+    if gameOver:
+        text = font.render(
+            "You Lost! (Press R to restart)",
+            True,
+            (255, 0, 0)
+
+        )
+
+        textRect = text.get_rect(
+            center = (
+                screen.get_width() // 2,
+                offsetY + boardHeight + 30
+            )
+        )
+
+
     pygame.display.flip()
 
     clock.tick(60)
