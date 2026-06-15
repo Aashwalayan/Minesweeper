@@ -82,11 +82,12 @@ def updateBoardPositions():
 
 def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gameOver):
 
+    padding = 5
 
     pygame.draw.rect(
             screen,
             (255, 0, 0),
-            (offsetX - 5, offsetY - 5, boardHeight + 10, boardWidth + 10),
+            (offsetX - padding, offsetY - padding, boardWidth + (padding * 2), boardHeight + (padding * 2)),
             2
             )
     
