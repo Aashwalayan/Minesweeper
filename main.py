@@ -5,6 +5,24 @@ from tile import Tile
 
 pygame.init()
 
+BG          = (34, 38, 46)      # window background
+FRAME       = (60, 66, 78)      # board outline
+HIDDEN      = (88, 101, 120)    # unrevealed tile
+HIDDEN_HOVER= (106, 120, 141)
+REVEALED    = (222, 217, 205)   # revealed tile
+FLAG        = (224, 108, 117)
+MINE_BG     = (70, 74, 86)
+MINE_HIT    = (214, 100, 100)
+
+NUMBER_COLORS = {
+    1: (74, 120, 196), 2: (84, 150, 100), 3: (206, 92, 92),
+    4: (110, 90, 170), 5: (170, 100, 70), 6: (60, 150, 150),
+    7: (80, 80, 90),   8: (130, 130, 140),
+}
+
+font = pygame.font.SysFont("segoeui,helvetica,arial", 26, bold=True)
+numFont = pygame.font.SysFont("segoeui,helvetica,arial", 20, bold=True)
+
 WIDTH, HEIGHT = 800, 600
 fullscreen = False
 
@@ -13,7 +31,6 @@ pygame.display.set_caption("Minesweeper")
 
 clock = pygame.time.Clock()
 
-font = pygame.font.SysFont(None, 24)
 
 def getRandNum():
     return random.randint(1, 10)
@@ -82,13 +99,13 @@ def updateBoardPositions():
 
 def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gameOver):
 
-    padding = 5
+    mouseX, mouseY = pygame.mouse.get_pos()
 
     pygame.draw.rect(
             screen,
-            (255, 0, 0),
-            (offsetX - padding, offsetY - padding, boardWidth + (padding * 2), boardHeight + (padding * 2)),
-            2
+            FRAME,
+            (offsetX - 8, offsetY - 8, boardWidth + 16, boardHeight + 16),
+            2, border_radius=4
             )
     
     
@@ -96,80 +113,30 @@ def drawBoard(screen, grid: list, offsetX, offsetY, boardWidth, boardHeight, gam
         for col in range(colsOfTiles):
             
             tile = grid[row][col]
-            border = 0
-            text = None
-            textRect = None
-            
-            
             x = offsetX + tileSize * col
             y = offsetY + tileSize * row
-
+            rect = pygame.Rect(x, y, tileSize, tileSize).inflate(-2, -2)
+            center = rect.center
             
 
             if tile.isMine and gameOver:
-                color = (0, 0, 0)
+                pygame.draw.rect(screen, MINE_HIT if tile.isRevealed else MINE_BG, rect, border_radius=5)
+                pygame.draw.circle(screen, (25, 25, 30), center, tileSize // 5)
 
+            elif tile.isRevealed:
+                pygame.draw.rect(screen, REVEALED, rect, border_radius=5)
+
+                if tile.adjacentMines > 0:
+                    text = numFont.render(str(tile.adjacentMines), True, NUMBER_COLORS[tile.adjacentMines])
+                    screen.blit(text, text.get_rect(center=center))
             else:
-                if tile.isFlagged and not tile.isRevealed and not gameOver:
-                    color = (200, 0, 0)
-                    border = 1
+                hovered = rect.collidepoint(mouseX, mouseY) and not gameOver
+                pygame.draw.rect(screen, HIDDEN_HOVER if hovered else HIDDEN, rect, border_radius=5)
 
-
-                elif tile.isRevealed and not tile.isMine and not tile.isFlagged and not gameOver:
-                    color = (255, 255, 50)
-                    border = 0
-
-                    if tile.adjacentMines > 0:
-                        mineNum = tile.adjacentMines
-                        mineNumColor = (0, 0, 0)
-                        
-                        match mineNum:
-                            case 1:
-                                mineNumColor = (0, 0, 255)
-                            case 2:
-                                mineNumColor = (0, 128, 0)
-                            case 3:
-                                mineNumColor = (255, 0, 0)
-                            case 4:
-                                mineNumColor = (0, 0, 128)
-                            case 5:
-                                mineNumColor = (128, 0, 0)
-                            case 6:
-                                mineNumColor = (0, 128, 128)
-                            case 7:
-                                mineNumColor = (0, 0, 0)
-                            case 8:
-                                mineNumColor = (128, 128, 128)
-                    
-                        text = font.render(str(mineNum), True, mineNumColor)
-                    
-                        textRect = text.get_rect(
-                            center = (x + tileSize // 2, y + tileSize // 2)
-                        )
-
-                elif tile.isRevealed and tile.adjacentMines == 0:
-                    color = (255, 255, 150)
-                    border = 0
-
-                else:
-                    color = (200, 200, 200)
-                    border = 0
-
-            pygame.draw.rect(
-                screen,
-                color,
-                (x, y, tileSize, tileSize)
-            )
-
-            pygame.draw.rect(
-                screen,
-                (0, 0, 0),
-                (x, y, tileSize, tileSize),
-                2
-            )
-
-            if text is not None:
-                screen.blit(text, textRect)
+                if tile.isFlagged:
+                    cx, cy = center
+                    pygame.draw.line(screen, (240, 240, 240), (cx - 3, cy - 7), (cx - 3, cy + 7), 2)
+                    pygame.draw.polygon(screen, FLAG, [(cx - 3, cy - 7), (cx + 7, cy - 3), (cx - 3, cy + 1)])
 
 def revealFreeTiles(grid: list, row, col):
 
@@ -333,39 +300,14 @@ while running:
                     )
         
 
-    screen.fill((30, 30, 30))
+    screen.fill(BG)
     offsetX, offsetY, boardHeight, boardWidth = updateBoardPositions()
     drawBoard(screen, grid, offsetX, offsetY, boardWidth, boardHeight, gameOver)
 
-    if gameWon:
-        text = font.render(
-            "You Won! (Press R to restart)",
-            True,
-            (255, 0, 0)
-
-        )
-
-        textRect = text.get_rect(
-            center = (
-                screen.get_width() // 2,
-                offsetY + boardHeight + 30
-            )
-        )
-
-    if gameOver:
-        text = font.render(
-            "You Lost! (Press R to restart)",
-            True,
-            (255, 0, 0)
-
-        )
-
-        textRect = text.get_rect(
-            center = (
-                screen.get_width() // 2,
-                offsetY + boardHeight + 30
-            )
-        )
+    if gameWon or gameOver:
+        msg = "You Won!" if gameWon else "You Lost!"
+        label = font.render(f"{msg} (Press R to restart)", True, (230, 230, 235))
+        screen.blit(label, label.get_rect(center=(screen.get_width() // 2, offsetY + boardHeight + 30)))
 
 
     pygame.display.flip()
